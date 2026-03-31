@@ -23,6 +23,9 @@ set(MCP_RPC_HEADERS
     McpRpcBridge.h
 )
 
+# 添加 Krpc 库
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../Krpc ${CMAKE_CURRENT_BINARY_DIR}/Krpc)
+
 # 创建静态库
 add_library(mcp_rpc_bridge STATIC ${MCP_RPC_SOURCES} ${MCP_RPC_HEADERS})
 
@@ -32,6 +35,7 @@ target_include_directories(mcp_rpc_bridge
         $<INSTALL_INTERFACE:include>
     PRIVATE
         ${Protobuf_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../Krpc/src/include
 )
 
 target_include_directories(mcp_rpc_bridge
@@ -43,6 +47,10 @@ target_link_libraries(mcp_rpc_bridge
     PUBLIC
         nlohmann_json::nlohmann_json
         ${Protobuf_LIBRARIES}
+    PRIVATE
+        krpc_core
+        glog
+        zookeeper_mt
 )
 
 # 安装规则

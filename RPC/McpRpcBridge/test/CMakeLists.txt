@@ -93,6 +93,14 @@ target_link_libraries(test_rpc_invoker PRIVATE mcp_rpc_bridge)
 add_test(NAME RpcInvokerTest COMMAND test_rpc_invoker)
 
 # ============================================
+# KrpcInvoker 测试
+# ============================================
+
+add_executable(test_krpc_invoker test_krpc_invoker.cc)
+target_link_libraries(test_krpc_invoker PRIVATE mcp_rpc_bridge)
+add_test(NAME KrpcInvokerTest COMMAND test_krpc_invoker)
+
+# ============================================
 # ArgumentsDeserializer 测试
 # ============================================
 
