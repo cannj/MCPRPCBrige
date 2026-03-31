@@ -1,0 +1,48 @@
+# 编译产物
+build/
+*.o
+*.so
+*.a
+*.dylib
+*.dll
+*.exe
+*.out
+
+# CMake 生成文件
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 临时文件
+*.tmp
+*.temp
+*.log
+
+# 测试产物
+*.gcno
+*.gcda
+coverage/
+
+# Protobuf 生成文件 (应该由 proto 文件生成)
+# *.pb.cc
+# *.pb.h
+
+# 敏感信息
+.env
+*.key
+*.pem
+credentials.json
+
+# macOS
+.DS_Store
+
+# Linux
+Thumbs.db
