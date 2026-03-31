@@ -5,6 +5,7 @@ set(MCP_RPC_SOURCES
     mcp/ProtoSchemaConverter.cc
     mcp/ArgumentsDeserializer.cc
     mcp/MCPSession.cc
+    mcp/StreamingResponseAggregator.cc
     invoker/RpcInvoker.cc
     invoker/KrpcInvoker.cc
     invoker/MockRpcInvoker.cc
@@ -17,6 +18,7 @@ set(MCP_RPC_HEADERS
     mcp/ArgumentsDeserializer.h
     mcp/MCPSession.h
     mcp/StreamingConfig.h
+    mcp/StreamingResponseAggregator.h
     invoker/RpcInvoker.h
     invoker/KrpcInvoker.h
     invoker/MockRpcInvoker.h

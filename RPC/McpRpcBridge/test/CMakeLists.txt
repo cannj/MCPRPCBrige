@@ -121,3 +121,47 @@ target_link_libraries(test_arguments_deserializer
         ${Protobuf_LIBRARIES}
 )
 add_test(NAME ArgumentsDeserializerTest COMMAND test_arguments_deserializer)
+
+# ============================================
+# StreamingResponseAggregator 测试
+# ============================================
+
+add_executable(test_streaming_aggregator
+    test_streaming_aggregator.cc
+    ${TEST_PROTO_SRCS}
+)
+target_include_directories(test_streaming_aggregator
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${Protobuf_INCLUDE_DIRS}
+)
+target_link_libraries(test_streaming_aggregator
+    PRIVATE
+        mcp_rpc_bridge
+        test_proto_lib
+        ${Protobuf_LIBRARIES}
+)
+add_test(NAME StreamingAggregatorTest COMMAND test_streaming_aggregator)
+
+# ============================================
+# MCPSession Streaming 测试
+# ============================================
+
+add_executable(test_mcp_session_streaming
+    test_mcp_session_streaming.cc
+    ${TEST_PROTO_SRCS}
+)
+target_include_directories(test_mcp_session_streaming
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${Protobuf_INCLUDE_DIRS}
+)
+target_link_libraries(test_mcp_session_streaming
+    PRIVATE
+        mcp_rpc_bridge
+        test_proto_lib
+        ${Protobuf_LIBRARIES}
+)
+add_test(NAME McpSessionStreamingTest COMMAND test_mcp_session_streaming)

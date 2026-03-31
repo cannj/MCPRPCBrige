@@ -4,6 +4,7 @@
 #include "ToolRegistry.h"
 #include "ArgumentsDeserializer.h"
 #include "StreamingConfig.h"
+#include "StreamingResponseAggregator.h"
 #include "invoker/RpcInvoker.h"
 #include <nlohmann/json.hpp>
 #include <string>
@@ -71,6 +72,7 @@ private:
     StreamingConfig config_;
     SessionState state_;
     ArgumentsDeserializer deserializer_;
+    StreamingResponseAggregator aggregator_;
 
     // 协议处理方法
     nlohmann::json HandleInitialize(const nlohmann::json& params, const nlohmann::json& id, bool is_notification);
@@ -89,6 +91,12 @@ private:
     static constexpr int kMethodNotFound = -32601;
     static constexpr int kInvalidParams = -32602;
     static constexpr int kInternalError = -32603;
+
+    // 流式 RPC 处理
+    nlohmann::json HandleStreamingRpc(
+        const ToolEntry* tool,
+        const std::vector<uint8_t>& request_bytes,
+        const nlohmann::json& id);
 };
 
 } // namespace mcp_rpc

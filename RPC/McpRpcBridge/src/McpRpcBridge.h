@@ -15,6 +15,7 @@
 #include "mcp/ArgumentsDeserializer.h"
 #include "mcp/MCPSession.h"
 #include "mcp/StreamingConfig.h"
+#include "mcp/StreamingResponseAggregator.h"
 
 // Invoker 层
 #include "invoker/RpcInvoker.h"
