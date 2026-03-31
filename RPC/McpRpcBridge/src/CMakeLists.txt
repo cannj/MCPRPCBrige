@@ -7,6 +7,7 @@ set(MCP_RPC_SOURCES
     mcp/MCPSession.cc
     invoker/RpcInvoker.cc
     invoker/KrpcInvoker.cc
+    invoker/MockRpcInvoker.cc
 )
 
 set(MCP_RPC_HEADERS
@@ -18,6 +19,7 @@ set(MCP_RPC_HEADERS
     mcp/StreamingConfig.h
     invoker/RpcInvoker.h
     invoker/KrpcInvoker.h
+    invoker/MockRpcInvoker.h
     McpRpcBridge.h
 )
 
@@ -30,6 +32,11 @@ target_include_directories(mcp_rpc_bridge
         $<INSTALL_INTERFACE:include>
     PRIVATE
         ${Protobuf_INCLUDE_DIRS}
+)
+
+target_include_directories(mcp_rpc_bridge
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
 target_link_libraries(mcp_rpc_bridge

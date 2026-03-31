@@ -1,5 +1,6 @@
 #include "mcp/ProtoSchemaConverter.h"
 #include <sstream>
+#include <unordered_map>
 
 namespace mcp_rpc {
 

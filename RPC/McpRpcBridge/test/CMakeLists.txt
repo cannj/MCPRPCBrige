@@ -58,8 +58,22 @@ add_test(NAME ToolRegistryCompleteTest COMMAND test_tool_registry_complete)
 # ProtoSchemaConverter 测试
 # ============================================
 
-add_executable(test_schema_converter test_schema_converter.cc)
-target_link_libraries(test_schema_converter PRIVATE mcp_rpc_bridge test_proto_lib)
+add_executable(test_schema_converter
+    test_schema_converter.cc
+    ${TEST_PROTO_SRCS}
+)
+target_include_directories(test_schema_converter
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${Protobuf_INCLUDE_DIRS}
+)
+target_link_libraries(test_schema_converter
+    PRIVATE
+        mcp_rpc_bridge
+        test_proto_lib
+        ${Protobuf_LIBRARIES}
+)
 add_test(NAME SchemaConverterTest COMMAND test_schema_converter)
 
 # ============================================
@@ -69,3 +83,33 @@ add_test(NAME SchemaConverterTest COMMAND test_schema_converter)
 add_executable(test_mcp_session test_mcp_session.cc)
 target_link_libraries(test_mcp_session PRIVATE mcp_rpc_bridge)
 add_test(NAME McpSessionTest COMMAND test_mcp_session)
+
+# ============================================
+# RpcInvoker 测试
+# ============================================
+
+add_executable(test_rpc_invoker test_rpc_invoker.cc)
+target_link_libraries(test_rpc_invoker PRIVATE mcp_rpc_bridge)
+add_test(NAME RpcInvokerTest COMMAND test_rpc_invoker)
+
+# ============================================
+# ArgumentsDeserializer 测试
+# ============================================
+
+add_executable(test_arguments_deserializer
+    test_arguments_deserializer.cc
+    ${TEST_PROTO_SRCS}
+)
+target_include_directories(test_arguments_deserializer
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${Protobuf_INCLUDE_DIRS}
+)
+target_link_libraries(test_arguments_deserializer
+    PRIVATE
+        mcp_rpc_bridge
+        test_proto_lib
+        ${Protobuf_LIBRARIES}
+)
+add_test(NAME ArgumentsDeserializerTest COMMAND test_arguments_deserializer)

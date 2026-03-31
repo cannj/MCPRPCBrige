@@ -73,9 +73,9 @@ private:
     ArgumentsDeserializer deserializer_;
 
     // 协议处理方法
-    nlohmann::json HandleInitialize(const nlohmann::json& params);
-    nlohmann::json HandleToolsList(const nlohmann::json& params);
-    nlohmann::json HandleToolsCall(const nlohmann::json& params);
+    nlohmann::json HandleInitialize(const nlohmann::json& params, const nlohmann::json& id, bool is_notification);
+    nlohmann::json HandleToolsList(const nlohmann::json& params, const nlohmann::json& id, bool is_notification);
+    nlohmann::json HandleToolsCall(const nlohmann::json& params, const nlohmann::json& id, bool is_notification);
 
     // 错误处理
     static nlohmann::json MakeError(int code, const std::string& message,

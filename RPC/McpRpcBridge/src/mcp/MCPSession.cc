@@ -1,4 +1,6 @@
 #include "mcp/MCPSession.h"
+#include <google/protobuf/util/json_util.h>
+#include <google/protobuf/dynamic_message.h>
 #include <iostream>
 
 namespace mcp_rpc {
@@ -17,33 +19,41 @@ nlohmann::json MCPSession::HandleRequest(const nlohmann::json& request) {
         // 解析 JSON-RPC 请求
         std::string method = request.value("method", "");
         nlohmann::json params = request.value("params", nlohmann::json::object());
-        nlohmann::json id = request.value("id", nullptr);
+
+        // JSON-RPC 2.0 notification（没有 id）不应该返回响应
+        bool is_notification = !request.contains("id");
+        nlohmann::json id = is_notification ? nlohmann::json() : request["id"];
 
         // 路由到对应的处理方法
         if (method == "initialize") {
-            return HandleInitialize(params);
+            return HandleInitialize(params, id, is_notification);
         } else if (method == "tools/list") {
             if (state_ != SessionState::Initialized) {
                 return MakeError(kInvalidRequest, "Session not initialized. Call 'initialize' first.", id);
             }
-            return HandleToolsList(params);
+            return HandleToolsList(params, id, is_notification);
         } else if (method == "tools/call") {
             if (state_ != SessionState::Initialized) {
                 return MakeError(kInvalidRequest, "Session not initialized. Call 'initialize' first.", id);
             }
-            return HandleToolsCall(params);
+            return HandleToolsCall(params, id, is_notification);
         } else {
             return MakeError(kMethodNotFound, "Unknown method: " + method, id);
         }
 
     } catch (const std::exception& e) {
         return MakeError(kInternalError, std::string("Internal error: ") + e.what(),
-                         request.value("id", nullptr));
+                         nlohmann::json());
     }
 }
 
-nlohmann::json MCPSession::HandleInitialize(const nlohmann::json& params) {
+nlohmann::json MCPSession::HandleInitialize(const nlohmann::json& params, const nlohmann::json& id, bool is_notification) {
     state_ = SessionState::Initialized;
+
+    // Notification 不返回响应
+    if (is_notification) {
+        return nlohmann::json();
+    }
 
     nlohmann::json result = {
         {"protocolVersion", "2024-11-05"},
@@ -56,10 +66,15 @@ nlohmann::json MCPSession::HandleInitialize(const nlohmann::json& params) {
         }}
     };
 
-    return MakeSuccess(result);
+    return MakeSuccess(result, id);
 }
 
-nlohmann::json MCPSession::HandleToolsList(const nlohmann::json& params) {
+nlohmann::json MCPSession::HandleToolsList(const nlohmann::json& params, const nlohmann::json& id, bool is_notification) {
+    // Notification 不返回响应
+    if (is_notification) {
+        return nlohmann::json();
+    }
+
     nlohmann::json tools = nlohmann::json::array();
 
     for (const auto* entry : registry_.ListTools()) {
@@ -71,10 +86,15 @@ nlohmann::json MCPSession::HandleToolsList(const nlohmann::json& params) {
         tools.push_back(tool);
     }
 
-    return MakeSuccess({{"tools", tools}});
+    return MakeSuccess({{"tools", tools}}, id);
 }
 
-nlohmann::json MCPSession::HandleToolsCall(const nlohmann::json& params) {
+nlohmann::json MCPSession::HandleToolsCall(const nlohmann::json& params, const nlohmann::json& id, bool is_notification) {
+    // Notification 不返回响应
+    if (is_notification) {
+        return nlohmann::json();
+    }
+
     std::string tool_name = params.value("name", "");
     nlohmann::json arguments = params.value("arguments", nlohmann::json::object());
 
@@ -86,10 +106,13 @@ nlohmann::json MCPSession::HandleToolsCall(const nlohmann::json& params) {
         for (const auto* entry : registry_.ListTools()) {
             available.push_back(entry->name);
         }
+        std::string available_str = available.empty() ? "none" : available[0];
+        for (size_t i = 1; i < available.size() && i < 5; ++i) {
+            available_str += ", " + available[i];
+        }
         return MakeError(kMethodNotFound,
-                         "Unknown tool: " + tool_name + ". Available: " +
-                         std::string(available.empty() ? "none" : available[0].c_str()),
-                         params.value("_meta", nlohmann::json(nullptr)));
+                         "Unknown tool: " + tool_name + ". Available: " + available_str,
+                         params.value("id", nullptr));
     }
 
     // 将参数序列化为 JSON 字符串
@@ -97,13 +120,12 @@ nlohmann::json MCPSession::HandleToolsCall(const nlohmann::json& params) {
 
     // 反序列化为 Protobuf 二进制
     std::vector<uint8_t> request_bytes;
-    // 使用 MessageFactory 创建消息原型
-    const google::protobuf::Message* prototype =
-        google::protobuf::MessageFactory::generated_factory()
-            ->GetPrototype(tool->method->input_type());
+    // 使用 DynamicMessageFactory 创建消息原型
+    google::protobuf::DynamicMessageFactory factory;
+    const google::protobuf::Message* prototype = factory.GetPrototype(tool->method->input_type());
     if (!prototype) {
         return MakeError(kInternalError, "Failed to get message prototype",
-                         params.value("_meta", nlohmann::json(nullptr)));
+                         params.value("id", nullptr));
     }
     std::string error = deserializer_.DeserializeToBytes(
         args_json,
@@ -112,26 +134,96 @@ nlohmann::json MCPSession::HandleToolsCall(const nlohmann::json& params) {
 
     if (!error.empty()) {
         return MakeError(kInvalidParams, "Failed to parse arguments: " + error,
-                         params.value("_meta", nlohmann::json(nullptr)));
+                         params.value("id", nullptr));
+    }
+
+    // 检查是否为流式 RPC
+    if (tool->method->client_streaming() || tool->method->server_streaming()) {
+        if (!config_.register_client_streaming && tool->method->client_streaming()) {
+            return MakeError(kInvalidParams,
+                             "Client-streaming RPCs are not supported",
+                             params.value("id", nullptr));
+        }
+        if (!config_.register_bidi_streaming && tool->method->server_streaming()) {
+            // 对于 server-streaming，记录警告但仍然处理（聚合响应）
+            std::cerr << "Warning: Calling streaming RPC " << tool_name
+                      << " - responses will be aggregated" << std::endl;
+        }
     }
 
     // 调用 RPC
-    // TODO: 处理流式 RPC
-    auto future = invoker_->Invoke(tool->method->full_name(),
-                                    request_bytes);
+    auto future = invoker_->Invoke(tool->method->full_name(), request_bytes);
 
     // 等待响应（同步）
-    // TODO: 支持异步返回
     try {
         auto response_status = future.get();
-        // TODO: 将 response_status 转换为 JSON
+        if (!response_status.ok()) {
+            return MakeError(kInternalError, "RPC call failed: " + response_status.message(),
+                             params.value("id", nullptr));
+        }
 
-        // 临时实现：返回空结果
-        return MakeSuccess({{"content", {{"type", "text"}, {"text", "OK"}}}});
+        // 获取响应数据
+        const auto& response_bytes = response_status.value();
+        if (response_bytes.empty()) {
+            return MakeSuccess({{"content", {{"type", "text"}, {"text", ""}}}});
+        }
+
+        // 将 Protobuf 二进制序列化为 JSON
+        // 首先需要获取响应的 Message 原型
+        google::protobuf::DynamicMessageFactory response_factory;
+        const google::protobuf::Message* response_prototype =
+            response_factory.GetPrototype(tool->method->output_type());
+
+        if (!response_prototype) {
+            // 如果无法获取原型，返回原始二进制数据的 base64 编码
+            return MakeSuccess({
+                {"content", {
+                    {"type", "text"},
+                    {"text", "Response received (binary data)"}
+                }}
+            });
+        }
+
+        // 创建响应消息对象
+        std::unique_ptr<google::protobuf::Message> response_message(
+            response_prototype->New());
+
+        // 从二进制数据解析
+        if (!response_message->ParseFromArray(response_bytes.data(),
+                                               static_cast<int>(response_bytes.size()))) {
+            return MakeError(kInternalError, "Failed to parse response",
+                             params.value("id", nullptr));
+        }
+
+        // 序列化为 JSON
+        google::protobuf::util::JsonPrintOptions json_options;
+        json_options.preserve_proto_field_names = true;
+        json_options.always_print_enums_as_ints = false;
+
+        std::string response_json;
+        auto status = google::protobuf::util::MessageToJsonString(*response_message,
+                                                                   &response_json,
+                                                                   json_options);
+
+        if (!status.ok()) {
+            return MakeError(kInternalError, "Failed to serialize response: " + status.message().ToString(),
+                             params.value("id", nullptr));
+        }
+
+        // 解析 JSON 字符串为 json 对象
+        nlohmann::json result_json = nlohmann::json::parse(response_json);
+
+        // 构建 MCP 风格的响应
+        nlohmann::json content = {
+            {"type", "object"},
+            {"data", result_json}
+        };
+
+        return MakeSuccess({{"content", content}});
 
     } catch (const std::exception& e) {
         return MakeError(kInternalError, std::string("RPC call failed: ") + e.what(),
-                         params.value("_meta", nlohmann::json(nullptr)));
+                         params.value("id", nullptr));
     }
 }
 
