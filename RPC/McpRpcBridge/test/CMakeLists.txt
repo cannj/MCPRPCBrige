@@ -165,3 +165,25 @@ target_link_libraries(test_mcp_session_streaming
         ${Protobuf_LIBRARIES}
 )
 add_test(NAME McpSessionStreamingTest COMMAND test_mcp_session_streaming)
+
+# ============================================
+# E2E Integration 测试
+# ============================================
+
+add_executable(test_integration_e2e
+    test_integration_e2e.cc
+    ${TEST_PROTO_SRCS}
+)
+target_include_directories(test_integration_e2e
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${Protobuf_INCLUDE_DIRS}
+)
+target_link_libraries(test_integration_e2e
+    PRIVATE
+        mcp_rpc_bridge
+        test_proto_lib
+        ${Protobuf_LIBRARIES}
+)
+add_test(NAME IntegrationE2ETest COMMAND test_integration_e2e)
